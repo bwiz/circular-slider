@@ -4,12 +4,17 @@ const ctx = canvas.getContext('2d');
 
 const center = {};
 const currentLocation = {};
+let steps = [];
 
 const step = 50;
 const maxValue = 1000;
 
 // degrees to radians with -90 degree offset as circle begins at 3 o'clock
 const degree2Radian = degrees => (degrees - 90) * (Math.PI / 180);
+const radians2Degrees = radians => {
+  let degrees = (radians + (Math.PI / 2)) * (180 / Math.PI); // Include offset
+  return degrees;
+};
 
 document.addEventListener('click', e => {
   if(isInCircle({ x: e.layerX, y: e.layerY }, center, 300, 20)) {
@@ -29,13 +34,15 @@ window.addEventListener('load', _ => {
 })
 
 function render() {
+  steps = [];
+
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   // Angle between center and current position in rad
   const theta = Math.atan2(currentLocation.y - center.y, currentLocation.x - center.x);
   const gap = (step * 360) / maxValue;
 
-  for(let i = 0; i < 360; i += gap) {
+  for(let i = 0; i <= 360; i += gap) {
 
     ctx.beginPath();
     ctx.arc(center.x, center.y, 300, degree2Radian(i), degree2Radian(i + (gap - 1)));
@@ -43,16 +50,18 @@ function render() {
     ctx.lineWidth = 40;
     ctx.stroke();
     ctx.closePath();
+
+    steps.push(degree2Radian(i));
   }
 
   ctx.beginPath();
-  ctx.arc(center.x, center.y, 300, degree2Radian(0), theta);
+  ctx.arc(center.x, center.y, 300, degree2Radian(0), getClosestStep(steps, theta));
   ctx.strokeStyle = "green";
   ctx.lineWidth = 40;
   ctx.stroke();
 
-  const cx = Math.cos(theta) * 300;
-  const cy = Math.sin(theta) * 300;
+  const cx = Math.cos(getClosestStep(steps, theta)) * 300;
+  const cy = Math.sin(getClosestStep(steps, theta)) * 300;
   ctx.beginPath();
   ctx.arc(center.x + cx, center.y + cy, 30, 0, 2 * Math.PI);
   ctx.fillStyle = '#fff';
@@ -60,8 +69,21 @@ function render() {
   ctx.lineWidth = 5;
   ctx.fill();
   ctx.stroke();
+
+  // Texts
+  ctx.beginPath();
+  ctx.font = '30px Arial';
+  ctx.fillStyle = 'white';
+  ctx.fillText(`Value: ${getValue(getClosestStep(steps, theta), maxValue)};`, center.x, center.y);
   
   window.requestAnimationFrame(render);
+}
+
+function getValue(theta, maxValue) {
+  let degrees = radians2Degrees(theta); // -180 because of the initial offset
+
+  // console.log(degrees);
+  return (degrees * maxValue) / 360;
 }
 
 function isInCircle(currentLocation, center, distance, distanceDelta) {
@@ -76,4 +98,27 @@ function isInCircle(currentLocation, center, distance, distanceDelta) {
     return true;
   }
   return false;
+}
+
+function getClosestStep(steps, theta) {
+  if(isNaN(theta)) {
+    return;
+  }
+
+  let minValue = 10;
+  let closestStep = theta;
+
+  steps.forEach(step => {
+    if(theta < (-1 * (Math.PI / 2))) {
+      theta = Math.PI + Math.abs(Math.PI + theta);
+    }
+
+    const newMinValue = Math.abs(theta - step);
+    if(newMinValue < minValue) {
+      minValue = newMinValue;
+      closestStep = step; 
+    }
+  });
+
+  return closestStep;
 }
