@@ -12,8 +12,10 @@ const maxValue = 1000;
 const degree2Radian = degrees => (degrees - 90) * (Math.PI / 180);
 
 document.addEventListener('click', e => {
-  currentLocation.x = e.clientX;
-  currentLocation.y = e.clientY;
+  if(isInCircle({ x: e.layerX, y: e.layerY }, center, 300, 20)) {
+    currentLocation.x = e.layerX;
+    currentLocation.y = e.layerY;
+  }
 })
 
 window.addEventListener('load', _ => {
@@ -48,6 +50,30 @@ function render() {
   ctx.strokeStyle = "green";
   ctx.lineWidth = 40;
   ctx.stroke();
+
+  const cx = Math.cos(theta) * 300;
+  const cy = Math.sin(theta) * 300;
+  ctx.beginPath();
+  ctx.arc(center.x + cx, center.y + cy, 30, 0, 2 * Math.PI);
+  ctx.fillStyle = '#fff';
+  ctx.strokeStyle = 'gray';
+  ctx.lineWidth = 5;
+  ctx.fill();
+  ctx.stroke();
   
   window.requestAnimationFrame(render);
+}
+
+function isInCircle(currentLocation, center, distance, distanceDelta) {
+  if(!currentLocation) {
+    return;
+  }
+
+  const mouseToCenter = Math.sqrt(Math.pow(currentLocation.y - center.y, 2) + Math.pow(currentLocation.x - center.x, 2));
+  const diff = Math.abs(mouseToCenter - distance);
+
+  if(diff <= distanceDelta) {
+    return true;
+  }
+  return false;
 }
