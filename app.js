@@ -10,6 +10,8 @@ const step = 50;
 const minValue = 500;
 const maxValue = 1500;
 
+let sliderHold = false;
+
 // degrees to radians with -90 degree offset as circle begins at 3 o'clock
 const degree2Radian = degrees => (degrees - 90) * (Math.PI / 180);
 const radians2Degrees = radians => {
@@ -17,12 +19,19 @@ const radians2Degrees = radians => {
   return degrees;
 };
 
-document.addEventListener('click', e => {
+document.addEventListener('click', e => handleMouseEvent(e));
+document.addEventListener('mousedown', e => handleMouseEvent(e) ? sliderHold = true : sliderHold = false);
+document.addEventListener('mouseup', _ => sliderHold = false);
+document.addEventListener('mousemove', e => sliderHold ? handleMouseEvent(e) : undefined);
+
+function handleMouseEvent(e) {
   if(isInCircle({ x: e.layerX, y: e.layerY }, center, 300, 20)) {
     currentLocation.x = e.layerX;
     currentLocation.y = e.layerY;
+    return true;
   }
-})
+  return false;
+}
 
 window.addEventListener('load', _ => {
   canvas.width = canvas.clientWidth;
