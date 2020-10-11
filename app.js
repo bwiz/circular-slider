@@ -7,7 +7,8 @@ const currentLocation = {};
 let steps = [];
 
 const step = 50;
-const maxValue = 1000;
+const minValue = 500;
+const maxValue = 1500;
 
 // degrees to radians with -90 degree offset as circle begins at 3 o'clock
 const degree2Radian = degrees => (degrees - 90) * (Math.PI / 180);
@@ -40,7 +41,7 @@ function render() {
 
   // Angle between center and current position in rad
   const theta = Math.atan2(currentLocation.y - center.y, currentLocation.x - center.x);
-  const gap = (step * 360) / maxValue;
+  const gap = (step * 360) / (maxValue - minValue);
 
   for(let i = 0; i <= 360; i += gap) {
 
@@ -83,7 +84,7 @@ function getValue(theta, maxValue) {
   let degrees = radians2Degrees(theta); // -180 because of the initial offset
 
   // console.log(degrees);
-  return (degrees * maxValue) / 360;
+  return (degrees * (maxValue - minValue)) / 360 + minValue;
 }
 
 function isInCircle(currentLocation, center, distance, distanceDelta) {
