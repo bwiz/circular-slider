@@ -7,3 +7,8 @@ html, body {
 h2 {
   padding-left: 20px;
 }
+
+.container {
+  width: 800px;
+  height: 800px;
+}
