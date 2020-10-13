@@ -52,6 +52,7 @@ class CircularSliderItem {
   #sliderColorAlpha = 0.7;
   #thickness = 40; // TODO: Make as an option
   #sliderButton;
+  #decimals = 0;
 
   get currentLocation() { return this.#currentLocation; }
 
@@ -181,6 +182,8 @@ class CircularSlider {
   #center;
   #sliderItems;
 
+  #onChangedValues = function(changedValues) {};
+
   constructor(elementId, sliderOptionsList) {
     this.#canvas = document.getElementById(elementId);
     this.#ctx = this.#canvas.getContext('2d');
@@ -191,11 +194,16 @@ class CircularSlider {
     this.#setup(sliderOptionsList);
   }
 
+  onChange(changedValues) {
+    this.#onChangedValues = changedValues;
+  }
+
   #setup(sliderOptionsList) {
     window.addEventListener('load', _ => {
       this.#canvas.width = this.#canvas.clientWidth;
       this.#canvas.height = this.#canvas.clientHeight; 
 
+      // Slider will always be drawn in the center
       this.#center.x = this.#canvas.width / 2;
       this.#center.y = this.#canvas.height / 2;
 
@@ -227,6 +235,9 @@ class CircularSlider {
       sliderValueResults.push(sliderItem.getValue(theta));
     });
 
+    // TODO: Trigger event only if values actually change
+    this.#onChangedValues(sliderValueResults);
+
     this.#drawValues(this.#ctx, sliderValueResults);
 
     window.requestAnimationFrame(this.#render.bind(this));
@@ -250,6 +261,10 @@ class CircularSlider {
   }
 }
 
-new CircularSlider('canvas', [
+const component = new CircularSlider('canvas', [
   new CircularSliderOptions('Test', '#ff4043', 0, 1000, 50, 300)
 ]);
+
+component.onChange(values => {
+  // console.log(JSON.stringify(values));
+})
