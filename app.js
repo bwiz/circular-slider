@@ -18,23 +18,20 @@ class CircularSliderOptions {
   #radius;
   #name;
 
-  #thickness = 40; // TODO: Make as an option
-
   get name() { return this.#name; }
   get color() { return this.#color; }
   get minValue() { return this.#minValue; }
   get maxValue() { return this.#maxValue; }
   get step() { return this.#step; }
   get radius() { return this.#radius; }
-  get thickness() { return this.#thickness; }
 
   constructor(name, color, minValue, maxValue, step, radius) {
     this.#name = name;
     this.#color = color;
     this.#minValue = minValue;
     this.#maxValue = maxValue;
-    this.#step = (step * 360) / maxValue;
-    this.#radius = radius - this.#thickness / 2;
+    this.#radius = radius;
+    this.#step = (step * 360) / (maxValue - minValue);
   }
 }
 
@@ -47,12 +44,131 @@ class CircularSliderItem {
   #center;
   #steps;
   #sliderHold;
+  #currentLocation;
+
+  // TODO: Make as options
+  #gap = 1;
+  #baseColor = '#bfc1c2';
+  #sliderColorAlpha = 0.7;
+  #thickness = 40; // TODO: Make as an option
+  #sliderButton;
+
+  get currentLocation() { return this.#currentLocation; }
 
   constructor(sliderOptions, center) {
     this.#sliderOptions = sliderOptions;
     this.#center = center;
+
     this.#sliderHold = false;
+    this.#sliderButton = {
+      radius: (this.#thickness / 2) + 5, // TODO: Change default value
+      fill: '#fff',
+      stroke: '#bfc1c2',
+      strokeWidth: 2
+    };
+
+    this.#currentLocation = {};
     this.#steps = [];
+    for (let i = 0; i <= 360; i += sliderOptions.step) { 
+      this.#steps.push(Trigonometry.degree2Radian(i));
+    }
+
+    this.#setMouseEvents();
+  }
+
+  drawBaseCircle(ctx) {
+    for(let i = 0; i <= 360; i += this.#sliderOptions.step) {
+      ctx.beginPath();
+      ctx.arc(this.#center.x, this.#center.y, this.#sliderOptions.radius, Trigonometry.degree2Radian(i), Trigonometry.degree2Radian(i + (this.#sliderOptions.step - this.#gap)));
+      ctx.strokeStyle = this.#baseColor;
+      ctx.lineWidth = this.#thickness;
+      ctx.stroke();
+      ctx.closePath();
+    }
+  }
+
+  drawSliderProgress(ctx, theta) {
+    // Draw a circle slider
+    ctx.beginPath();
+    ctx.arc(this.#center.x, this.#center.y, this.#sliderOptions.radius, Trigonometry.degree2Radian(0), this.#getClosestStep(this.#steps, theta));
+    ctx.globalAlpha = this.#sliderColorAlpha;
+    ctx.strokeStyle = this.#sliderOptions.color;
+    ctx.lineWidth = this.#thickness;
+    ctx.stroke();
+
+    ctx.globalAlpha = 1.0; // Reset global alpha
+  }
+
+  drawSliderButton(ctx, theta) {
+    // Slider 
+    const cx = Math.cos(this.#getClosestStep(this.#steps, theta)) * this.#sliderOptions.radius;
+    const cy = Math.sin(this.#getClosestStep(this.#steps, theta)) * this.#sliderOptions.radius;
+
+    ctx.beginPath();
+    ctx.arc(this.#center.x + cx, this.#center.y + cy, this.#sliderButton.radius, 0, 2 * Math.PI);
+    ctx.fillStyle = this.#sliderButton.fill;
+    ctx.strokeStyle = this.#sliderButton.stroke;
+    ctx.lineWidth = this.#sliderButton.strokeWidth;
+    ctx.fill();
+    ctx.stroke();
+  }
+
+  getValue(theta) {
+    let degrees = Trigonometry.radians2Degrees(this.#getClosestStep(this.#steps, theta));
+    const value = (degrees * (this.#sliderOptions.maxValue - this.#sliderOptions.minValue)) / 360 + this.#sliderOptions.minValue;
+
+    return {
+      name: this.#sliderOptions.name,
+      color: this.#sliderOptions.color,
+      value: value.toFixed(0)
+    };
+  }
+
+  #isInCircle(currentLocation, center, distance, distanceDelta) {
+    if(!currentLocation) { return; }
+  
+    const mouseToCenter = Math.sqrt(Math.pow(currentLocation.y - center.y, 2) + Math.pow(currentLocation.x - center.x, 2));
+    const diff = Math.abs(mouseToCenter - distance);
+  
+    return diff <= distanceDelta;
+  }
+
+  #getClosestStep(steps, theta) {
+    if(isNaN(theta)) { return; }
+  
+    let minValue = 10;
+    let closestStep = theta;
+  
+    steps.forEach(step => {
+      if(theta < (-1 * (Math.PI / 2))) {
+        theta = Math.PI + Math.abs(Math.PI + theta);
+      }
+  
+      const newMinValue = Math.abs(theta - step);
+  
+      if(newMinValue < minValue) {
+        minValue = newMinValue;
+        closestStep = step; 
+      }
+    });
+  
+    return closestStep;
+  }
+
+  #setMouseEvents() {
+    document.addEventListener('click', e => this.#handleMouseEvent(e));
+    document.addEventListener('mousedown', e => this.#handleMouseEvent(e) ? this.#sliderHold = true : this.#sliderHold = false);
+    document.addEventListener('mouseup', _ => this.#sliderHold = false);
+    document.addEventListener('mousemove', e => this.#sliderHold ? this.#handleMouseEvent(e) : undefined);
+  }
+
+  #handleMouseEvent(e) {
+    if(this.#isInCircle({ x: e.layerX, y: e.layerY }, this.#center, this.#sliderOptions.radius, this.#thickness / 2)) {
+      this.#currentLocation.x = e.layerX;
+      this.#currentLocation.y = e.layerY;
+      return true;
+    }
+    return false;
   }
 }
 
@@ -62,138 +178,78 @@ class CircularSliderItem {
 class CircularSlider {
   #canvas;
   #ctx;
-  #sliderOptionList;
+  #center;
+  #sliderItems;
 
   constructor(elementId, sliderOptionsList) {
     this.#canvas = document.getElementById(elementId);
     this.#ctx = this.#canvas.getContext('2d');
-    this.#sliderOptionList = sliderOptionsList;
+
+    this.#sliderItems = [];
+    this.#center = {};
+
+    this.#setup(sliderOptionsList);
+  }
+
+  #setup(sliderOptionsList) {
+    window.addEventListener('load', _ => {
+      this.#canvas.width = this.#canvas.clientWidth;
+      this.#canvas.height = this.#canvas.clientHeight; 
+
+      this.#center.x = this.#canvas.width / 2;
+      this.#center.y = this.#canvas.height / 2;
+
+      sliderOptionsList.forEach(sliderOptions => {
+        this.#sliderItems.push(new CircularSliderItem(sliderOptions, this.#center));
+      })
+    
+      window.requestAnimationFrame(this.#render.bind(this));
+    });
+  }
+
+  #render() {
+    this.#ctx.clearRect(0, 0, this.#canvas.width, this.#canvas.height);
+    const sliderValueResults = [];
+
+    this.#sliderItems.forEach(sliderItem => {
+
+      sliderItem.drawBaseCircle(this.#ctx);
+
+      // Calculate the angle between current and center position.
+      let theta = Math.atan2(sliderItem.currentLocation.y - this.#center.y, sliderItem.currentLocation.x - this.#center.x);
+      if(isNaN(theta)) {
+        theta = Trigonometry.degree2Radian(0);
+      }
+
+      sliderItem.drawSliderProgress(this.#ctx, theta);
+      sliderItem.drawSliderButton(this.#ctx, theta);
+
+      sliderValueResults.push(sliderItem.getValue(theta));
+    });
+
+    this.#drawValues(this.#ctx, sliderValueResults);
+
+    window.requestAnimationFrame(this.#render.bind(this));
+  }
+
+  // TODO: Remove temp method
+  #drawValues(ctx, sliderValueResults) {
+    // Texts
+    let offset = 10;
+    sliderValueResults.forEach(sliderValueResult => {
+      ctx.beginPath();
+      ctx.font = '30px Arial';
+      ctx.fillStyle = 'black';
+      ctx.fillText(`${sliderValueResult.name}:`, 10, offset + 50);
+      ctx.font = 'bold 30px Arial Narrow';
+      ctx.fillStyle = sliderValueResult.color;
+      ctx.fillText(`$${sliderValueResult.value}`, 150, offset + 50);
+
+      offset += 50;
+    });
   }
 }
 
-const canvas = document.getElementById('canvas');
-const ctx = canvas.getContext('2d');
-
-const center = {};
-const currentLocation = {};
-let steps = [];
-
-const step = 50;
-const minValue = 500;
-const maxValue = 1500;
-
-let sliderHold = false;
-
-document.addEventListener('click', e => handleMouseEvent(e));
-document.addEventListener('mousedown', e => handleMouseEvent(e) ? sliderHold = true : sliderHold = false);
-document.addEventListener('mouseup', _ => sliderHold = false);
-document.addEventListener('mousemove', e => sliderHold ? handleMouseEvent(e) : undefined);
-
-function handleMouseEvent(e) {
-  if(isInCircle({ x: e.layerX, y: e.layerY }, center, 300, 20)) {
-    currentLocation.x = e.layerX;
-    currentLocation.y = e.layerY;
-    return true;
-  }
-  return false;
-}
-
-window.addEventListener('load', _ => {
-  canvas.width = canvas.clientWidth;
-  canvas.height = canvas.clientHeight;
-
-  center.x = canvas.width / 2;
-  center.y = canvas.height / 2;
-
-  window.requestAnimationFrame(render);
-})
-
-function render() {
-  steps = [];
-
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  // Angle between center and current position in rad
-  const theta = Math.atan2(currentLocation.y - center.y, currentLocation.x - center.x);
-  const stepDegrees = (step * 360) / (maxValue - minValue);
-  const gap = 1;
-
-  for(let i = 0; i <= 360; i += stepDegrees) {
-
-    ctx.beginPath();
-    ctx.arc(center.x, center.y, 300, Trigonometry.degree2Radian(i), Trigonometry.degree2Radian(i + (stepDegrees - gap)));
-    ctx.strokeStyle = 'gray';
-    ctx.lineWidth = 40;
-    ctx.stroke();
-    ctx.closePath();
-
-    steps.push(Trigonometry.degree2Radian(i));
-  }
-
-  ctx.beginPath();
-  ctx.arc(center.x, center.y, 300, Trigonometry.degree2Radian(0), getClosestStep(steps, theta));
-  ctx.strokeStyle = "green";
-  ctx.lineWidth = 40;
-  ctx.stroke();
-
-  const cx = Math.cos(getClosestStep(steps, theta)) * 300;
-  const cy = Math.sin(getClosestStep(steps, theta)) * 300;
-  ctx.beginPath();
-  ctx.arc(center.x + cx, center.y + cy, 30, 0, 2 * Math.PI);
-  ctx.fillStyle = '#fff';
-  ctx.strokeStyle = 'gray';
-  ctx.lineWidth = 5;
-  ctx.fill();
-  ctx.stroke();
-
-  // Texts
-  ctx.beginPath();
-  ctx.font = '30px Arial';
-  ctx.fillStyle = 'white';
-  ctx.fillText(`Value: ${getValue(getClosestStep(steps, theta), maxValue)};`, center.x, center.y);
-  
-  window.requestAnimationFrame(render);
-}
-
-function getValue(theta, maxValue) {
-  let degrees = Trigonometry.radians2Degrees(theta);
-
-  return (degrees * (maxValue - minValue)) / 360 + minValue;
-}
-
-function isInCircle(currentLocation, center, distance, distanceDelta) {
-  if(!currentLocation) {
-    return;
-  }
-
-  const mouseToCenter = Math.sqrt(Math.pow(currentLocation.y - center.y, 2) + Math.pow(currentLocation.x - center.x, 2));
-  const diff = Math.abs(mouseToCenter - distance);
-
-  if(diff <= distanceDelta) {
-    return true;
-  }
-  return false;
-}
-
-function getClosestStep(steps, theta) {
-  if(isNaN(theta)) {
-    return;
-  }
-
-  let minValue = 10;
-  let closestStep = theta;
-
-  steps.forEach(step => {
-    if(theta < (-1 * (Math.PI / 2))) {
-      theta = Math.PI + Math.abs(Math.PI + theta);
-    }
-
-    const newMinValue = Math.abs(theta - step);
-    if(newMinValue < minValue) {
-      minValue = newMinValue;
-      closestStep = step; 
-    }
-  });
-
-  return closestStep;
-}
+new CircularSlider('canvas', [
+  new CircularSliderOptions('Test', '#ff4043', 0, 1000, 50, 300)
+]);
