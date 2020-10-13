@@ -1,4 +1,12 @@
-// JS Code
+class Trigonometry {
+  // degrees to radians with -90 degree offset as circle begins at 3 o'clock
+  static degree2Radian = degrees => (degrees - 90) * (Math.PI / 180);
+  static radians2Degrees = radians => {
+    let degrees = (radians + (Math.PI / 2)) * (180 / Math.PI); // Include offset
+    return degrees;
+  };
+}
+
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 
@@ -11,13 +19,6 @@ const minValue = 500;
 const maxValue = 1500;
 
 let sliderHold = false;
-
-// degrees to radians with -90 degree offset as circle begins at 3 o'clock
-const degree2Radian = degrees => (degrees - 90) * (Math.PI / 180);
-const radians2Degrees = radians => {
-  let degrees = (radians + (Math.PI / 2)) * (180 / Math.PI); // Include offset
-  return degrees;
-};
 
 document.addEventListener('click', e => handleMouseEvent(e));
 document.addEventListener('mousedown', e => handleMouseEvent(e) ? sliderHold = true : sliderHold = false);
@@ -50,22 +51,23 @@ function render() {
 
   // Angle between center and current position in rad
   const theta = Math.atan2(currentLocation.y - center.y, currentLocation.x - center.x);
-  const gap = (step * 360) / (maxValue - minValue);
+  const stepDegrees = (step * 360) / (maxValue - minValue);
+  const gap = 1;
 
-  for(let i = 0; i <= 360; i += gap) {
+  for(let i = 0; i <= 360; i += stepDegrees) {
 
     ctx.beginPath();
-    ctx.arc(center.x, center.y, 300, degree2Radian(i), degree2Radian(i + (gap - 1)));
+    ctx.arc(center.x, center.y, 300, Trigonometry.degree2Radian(i), Trigonometry.degree2Radian(i + (stepDegrees - gap)));
     ctx.strokeStyle = 'gray';
     ctx.lineWidth = 40;
     ctx.stroke();
     ctx.closePath();
 
-    steps.push(degree2Radian(i));
+    steps.push(Trigonometry.degree2Radian(i));
   }
 
   ctx.beginPath();
-  ctx.arc(center.x, center.y, 300, degree2Radian(0), getClosestStep(steps, theta));
+  ctx.arc(center.x, center.y, 300, Trigonometry.degree2Radian(0), getClosestStep(steps, theta));
   ctx.strokeStyle = "green";
   ctx.lineWidth = 40;
   ctx.stroke();
@@ -90,9 +92,8 @@ function render() {
 }
 
 function getValue(theta, maxValue) {
-  let degrees = radians2Degrees(theta); // -180 because of the initial offset
+  let degrees = Trigonometry.radians2Degrees(theta);
 
-  // console.log(degrees);
   return (degrees * (maxValue - minValue)) / 360 + minValue;
 }
 
