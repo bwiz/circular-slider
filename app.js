@@ -7,6 +7,56 @@ class Trigonometry {
   static radians2Degrees = radians => (radians + (Math.PI / 2)) * (180 / Math.PI);
 }
 
+class ComponentOptions {
+  baseSlider;
+  sliderButton;
+  decimals;
+
+  constructor(componentOptions) {
+    this.setDefaults();
+    this.updateDefaults(componentOptions);
+  }
+
+  updateDefaults(componentOptions) {
+    if(!componentOptions) { return; }
+
+    this.#updateOptionIfExists(this.baseSlider, componentOptions.baseSlider);
+    this.#updateOptionIfExists(this.sliderButton, componentOptions.sliderButton);
+    this.#updateOptionIfExists(this.decimals, componentOptions.decimals);
+  }
+
+  setDefaults() {
+    this.baseSlider = {
+      gap: 1,
+      color: '#bfc1c2',
+      sliderColorAlpha: 0.7,
+      thickness: 40,
+      margin: 10
+    };
+    this.sliderButton = {
+      radius: (this.baseSlider.thickness / 2) + 5,
+      fill: '#fff',
+      stroke: '#bfc1c2',
+      strokeWidth: 2
+    };
+    this.decimals = 0;
+  }
+
+  #updateOptionIfExists(existingItem, newItem) {
+    if(typeof(existingItem) === 'object' && existingItem !== null) {
+      Object.keys(existingObj).forEach(prop => {
+        if(newObj[prop]) {
+          existingObj[prop] = newObj[prop];
+        }
+      });
+    } else {
+      if(existingItem !== newItem) {
+        existingItem = newItem;
+      }
+    }
+  }
+}
+
 /**
  * Class intended for storing one slider options
  */
@@ -23,9 +73,12 @@ class CircularSliderOptions {
   get minValue() { return this.#minValue; }
   get maxValue() { return this.#maxValue; }
   get step() { return this.#step; }
+
+  set radius(value) { this.#radius = value; }
   get radius() { return this.#radius; }
 
-  constructor(name, color, minValue, maxValue, step, radius) {
+  // Radius is an optional parameter and when not provided, the value will be calculated automatically
+  constructor(name, color, minValue, maxValue, step, radius = undefined) {
     this.#name = name;
     this.#color = color;
     this.#minValue = minValue;
@@ -45,28 +98,15 @@ class CircularSliderItem {
   #steps;
   #sliderHold;
   #currentLocation;
-
-  // TODO: Make as options
-  #gap = 1;
-  #baseColor = '#bfc1c2';
-  #sliderColorAlpha = 0.7;
-  #thickness = 40; // TODO: Make as an option
-  #sliderButton;
-  #decimals = 0;
+  #componentOptions;
 
   get currentLocation() { return this.#currentLocation; }
 
-  constructor(sliderOptions, center) {
+  constructor(sliderOptions, componentOptions, center) {
     this.#sliderOptions = sliderOptions;
     this.#center = center;
-
+    this.#componentOptions = componentOptions;
     this.#sliderHold = false;
-    this.#sliderButton = {
-      radius: (this.#thickness / 2) + 5, // TODO: Change default value
-      fill: '#fff',
-      stroke: '#bfc1c2',
-      strokeWidth: 2
-    };
 
     this.#currentLocation = {};
     this.#steps = [];
@@ -80,9 +120,9 @@ class CircularSliderItem {
   drawBaseCircle(ctx) {
     for(let i = 0; i <= 360; i += this.#sliderOptions.step) {
       ctx.beginPath();
-      ctx.arc(this.#center.x, this.#center.y, this.#sliderOptions.radius, Trigonometry.degree2Radian(i), Trigonometry.degree2Radian(i + (this.#sliderOptions.step - this.#gap)));
-      ctx.strokeStyle = this.#baseColor;
-      ctx.lineWidth = this.#thickness;
+      ctx.arc(this.#center.x, this.#center.y, this.#sliderOptions.radius, Trigonometry.degree2Radian(i), Trigonometry.degree2Radian(i + (this.#sliderOptions.step - this.#componentOptions.baseSlider.gap)));
+      ctx.strokeStyle = this.#componentOptions.baseSlider.color;
+      ctx.lineWidth = this.#componentOptions.baseSlider.thickness;
       ctx.stroke();
       ctx.closePath();
     }
@@ -92,9 +132,9 @@ class CircularSliderItem {
     // Draw a circle slider
     ctx.beginPath();
     ctx.arc(this.#center.x, this.#center.y, this.#sliderOptions.radius, Trigonometry.degree2Radian(0), this.#getClosestStep(this.#steps, theta));
-    ctx.globalAlpha = this.#sliderColorAlpha;
+    ctx.globalAlpha = this.#componentOptions.baseSlider.sliderColorAlpha;
     ctx.strokeStyle = this.#sliderOptions.color;
-    ctx.lineWidth = this.#thickness;
+    ctx.lineWidth = this.#componentOptions.baseSlider.thickness;
     ctx.stroke();
 
     ctx.globalAlpha = 1.0; // Reset global alpha
@@ -106,10 +146,10 @@ class CircularSliderItem {
     const cy = Math.sin(this.#getClosestStep(this.#steps, theta)) * this.#sliderOptions.radius;
 
     ctx.beginPath();
-    ctx.arc(this.#center.x + cx, this.#center.y + cy, this.#sliderButton.radius, 0, 2 * Math.PI);
-    ctx.fillStyle = this.#sliderButton.fill;
-    ctx.strokeStyle = this.#sliderButton.stroke;
-    ctx.lineWidth = this.#sliderButton.strokeWidth;
+    ctx.arc(this.#center.x + cx, this.#center.y + cy, this.#componentOptions.sliderButton.radius, 0, 2 * Math.PI);
+    ctx.fillStyle = this.#componentOptions.sliderButton.fill;
+    ctx.strokeStyle = this.#componentOptions.sliderButton.stroke;
+    ctx.lineWidth = this.#componentOptions.sliderButton.strokeWidth;
     ctx.fill();
     ctx.stroke();
   }
@@ -164,7 +204,7 @@ class CircularSliderItem {
   }
 
   #handleMouseEvent(e) {
-    if(this.#isInCircle({ x: e.layerX, y: e.layerY }, this.#center, this.#sliderOptions.radius, this.#thickness / 2)) {
+    if(this.#isInCircle({ x: e.layerX, y: e.layerY }, this.#center, this.#sliderOptions.radius, this.#componentOptions.baseSlider.thickness / 2)) {
       this.#currentLocation.x = e.layerX;
       this.#currentLocation.y = e.layerY;
       return true;
@@ -181,24 +221,47 @@ class CircularSlider {
   #ctx;
   #center;
   #sliderItems;
+  #previousValueResults;
 
   #onChangedValues = function(changedValues) {};
 
-  constructor(elementId, sliderOptionsList) {
+  constructor(elementId, sliderOptionsList, componentOptions) {
     this.#canvas = document.getElementById(elementId);
     this.#ctx = this.#canvas.getContext('2d');
 
     this.#sliderItems = [];
     this.#center = {};
 
-    this.#setup(sliderOptionsList);
+    componentOptions = new ComponentOptions(componentOptions);
+
+    this.#validateSliderOptions(sliderOptionsList, componentOptions);
+    this.#setup(sliderOptionsList, componentOptions);
   }
 
   onChange(changedValues) {
     this.#onChangedValues = changedValues;
   }
 
-  #setup(sliderOptionsList) {
+  #validateSliderOptions(sliderOptions, componentOptions) {
+    // If one entry exists without the radius, all values will be recalculated
+    if(sliderOptions.filter(option => option.radius === undefined).length > 0) {
+
+      // The max circle size is 80% of the max width/height, and the lowest 150
+      const maxRadius = (this.#canvas.clientWidth / 2) * 0.8;
+      const minRadius = 150;
+
+      for(let i = 0; i < sliderOptions.length; i++) {
+        const newRadius = maxRadius - (i * (componentOptions.baseSlider.thickness + componentOptions.baseSlider.margin));
+        if(newRadius < minRadius) {
+          throw "Minimal radius is less than 150. Check values or the amount of items.";
+        }
+
+        sliderOptions[sliderOptions.length - 1 - i].radius = newRadius;
+      }
+    }
+  }
+
+  #setup(sliderOptionsList, componentOptions) {
     window.addEventListener('load', _ => {
       this.#canvas.width = this.#canvas.clientWidth;
       this.#canvas.height = this.#canvas.clientHeight; 
@@ -208,7 +271,7 @@ class CircularSlider {
       this.#center.y = this.#canvas.height / 2;
 
       sliderOptionsList.forEach(sliderOptions => {
-        this.#sliderItems.push(new CircularSliderItem(sliderOptions, this.#center));
+        this.#sliderItems.push(new CircularSliderItem(sliderOptions, componentOptions, this.#center));
       })
     
       window.requestAnimationFrame(this.#render.bind(this));
@@ -235,8 +298,11 @@ class CircularSlider {
       sliderValueResults.push(sliderItem.getValue(theta));
     });
 
-    // TODO: Trigger event only if values actually change
-    this.#onChangedValues(sliderValueResults);
+    // Not the most performant option, but gets the job done
+    if(JSON.stringify(sliderValueResults) !== JSON.stringify(this.#previousValueResults)) {
+      this.#onChangedValues(sliderValueResults);
+      this.#previousValueResults = sliderValueResults;
+    }
 
     this.#drawValues(this.#ctx, sliderValueResults);
 
@@ -262,9 +328,10 @@ class CircularSlider {
 }
 
 const component = new CircularSlider('canvas', [
-  new CircularSliderOptions('Test', '#ff4043', 0, 1000, 50, 300)
+  new CircularSliderOptions('Health care', '#ff4043', 0, 1000, 10),
+  new CircularSliderOptions('Entertainment', '#ff881f', 0, 1000, 10),
 ]);
 
 component.onChange(values => {
-  // console.log(JSON.stringify(values));
+  console.log(JSON.stringify(values));
 })
