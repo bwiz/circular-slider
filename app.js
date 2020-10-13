@@ -1,10 +1,74 @@
+/**
+ * Trigonometry class for static trigonometry methods
+ */
 class Trigonometry {
-  // degrees to radians with -90 degree offset as circle begins at 3 o'clock
+  // degrees to radians and the other way around with -90 degree offset as circle begins at 3 o'clock
   static degree2Radian = degrees => (degrees - 90) * (Math.PI / 180);
-  static radians2Degrees = radians => {
-    let degrees = (radians + (Math.PI / 2)) * (180 / Math.PI); // Include offset
-    return degrees;
-  };
+  static radians2Degrees = radians => (radians + (Math.PI / 2)) * (180 / Math.PI);
+}
+
+/**
+ * Class intended for storing one slider options
+ */
+class CircularSliderOptions {
+  #color;
+  #minValue;
+  #maxValue;
+  #step;
+  #radius;
+  #name;
+
+  #thickness = 40; // TODO: Make as an option
+
+  get name() { return this.#name; }
+  get color() { return this.#color; }
+  get minValue() { return this.#minValue; }
+  get maxValue() { return this.#maxValue; }
+  get step() { return this.#step; }
+  get radius() { return this.#radius; }
+  get thickness() { return this.#thickness; }
+
+  constructor(name, color, minValue, maxValue, step, radius) {
+    this.#name = name;
+    this.#color = color;
+    this.#minValue = minValue;
+    this.#maxValue = maxValue;
+    this.#step = (step * 360) / maxValue;
+    this.#radius = radius - this.#thickness / 2;
+  }
+}
+
+/**
+ * Class for setting up one slider arc logic
+ */
+class CircularSliderItem {
+  // Private members
+  #sliderOptions;
+  #center;
+  #steps;
+  #sliderHold;
+
+  constructor(sliderOptions, center) {
+    this.#sliderOptions = sliderOptions;
+    this.#center = center;
+    this.#sliderHold = false;
+    this.#steps = [];
+  }
+}
+
+/**
+ * Class intended for component rendering
+ */
+class CircularSlider {
+  #canvas;
+  #ctx;
+  #sliderOptionList;
+
+  constructor(elementId, sliderOptionsList) {
+    this.#canvas = document.getElementById(elementId);
+    this.#ctx = this.#canvas.getContext('2d');
+    this.#sliderOptionList = sliderOptionsList;
+  }
 }
 
 const canvas = document.getElementById('canvas');
