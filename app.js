@@ -255,6 +255,7 @@ class CircularSlider {
   #previousValueResults;
 
   #onChangedValues = function(changedValues) {};
+  #onInit = function(sliderItems) {};
 
   constructor(elementId, sliderOptionsList, componentOptions) {
     this.#canvas = document.getElementById(elementId);
@@ -262,7 +263,6 @@ class CircularSlider {
 
     this.#sliderItems = [];
     this.#center = {};
-    this.#currentLocation = {};
 
     componentOptions = new ComponentOptions(componentOptions);
 
@@ -276,9 +276,15 @@ class CircularSlider {
     this.#onChangedValues = changedValues;
   }
 
+  onInit(sliderItems) {
+    this.#onInit = sliderItems;
+  }
+
   #validateSliderOptions(sliderOptions, componentOptions) {
     // The max circle size is 80% of the max width/height, and the lowest 150
-    const maxRadius = (this.#canvas.clientWidth / 2) * 0.8;
+    const max = Math.min(this.#canvas.clientWidth, this.#canvas.clientHeight);
+
+    const maxRadius = (max / 2) * 0.8;
     const minRadius = 150;
 
     // If one entry exists without the radius, all values will be recalculated
@@ -302,7 +308,7 @@ class CircularSlider {
     }
   }
 
-  #setup(canvas, sliderOptionsList, componentOptions) {
+  #setup(sliderOptionsList, componentOptions) {
     window.addEventListener('load', _ => {
       this.#canvas.width = this.#canvas.clientWidth;
       this.#canvas.height = this.#canvas.clientHeight; 
@@ -312,16 +318,16 @@ class CircularSlider {
       this.#center.y = this.#canvas.height / 2;
 
       sliderOptionsList.forEach(sliderOptions => {
-        this.#sliderItems.push(new CircularSliderItem(canvas, sliderOptions, componentOptions, this.#center));
+        this.#sliderItems.push(new CircularSliderItem(sliderOptions, componentOptions, this.#center));
       })
+
+      this.#onInit(sliderOptionsList.map(x => ({ name: x.name, color: x.color, value: x.minValue })));
     
       window.requestAnimationFrame(this.#render.bind(this));
     });
   }
 
   #render() {
-    console.log('render');
-
     this.#ctx.clearRect(0, 0, this.#canvas.width, this.#canvas.height);
     const sliderValueResults = [];
 
@@ -347,7 +353,7 @@ class CircularSlider {
       this.#previousValueResults = sliderValueResults;
     }
 
-    this.#drawValues(this.#ctx, sliderValueResults);
+    // this.#drawValues(this.#ctx, sliderValueResults);
   }
 
   #setEvents(canvas) {
@@ -373,22 +379,22 @@ class CircularSlider {
     }
   }
 
-  // TODO: Remove temp method
-  #drawValues(ctx, sliderValueResults) {
-    // Texts
-    let offset = 10;
-    sliderValueResults.forEach(sliderValueResult => {
-      ctx.beginPath();
-      ctx.font = '30px Arial';
-      ctx.fillStyle = 'black';
-      ctx.fillText(`${sliderValueResult.name}:`, 10, offset + 50);
-      ctx.font = 'bold 30px Arial Narrow';
-      ctx.fillStyle = sliderValueResult.color;
-      ctx.fillText(`$${sliderValueResult.value}`, 150, offset + 50);
+  // // TODO: Remove temp method
+  // #drawValues(ctx, sliderValueResults) {
+  //   // Texts
+  //   let offset = 10;
+  //   sliderValueResults.forEach(sliderValueResult => {
+  //     ctx.beginPath();
+  //     ctx.font = '30px Arial';
+  //     ctx.fillStyle = 'black';
+  //     ctx.fillText(`${sliderValueResult.name}:`, 10, offset + 50);
+  //     ctx.font = 'bold 30px Arial Narrow';
+  //     ctx.fillStyle = sliderValueResult.color;
+  //     ctx.fillText(`$${sliderValueResult.value}`, 150, offset + 50);
 
-      offset += 50;
-    });
-  }
+  //     offset += 50;
+  //   });
+  // }
 }
 
 const component = new CircularSlider('canvas', [
@@ -396,6 +402,42 @@ const component = new CircularSlider('canvas', [
   new CircularSliderOptions('Entertainment', '#ff881f', 0, 1000, 10),
 ]);
 
-component.onChange(values => {
-  // console.log(JSON.stringify(values));
+component.onInit(sliderValue => {
+  const componentValuesEl = document.getElementById('component-values');
+  componentValuesEl.innerHTML = '';
+
+  sliderValue.forEach(sliderValue => {
+    const sliderValueDiv = document.createElement('div');
+    sliderValueDiv.className = 'slider-value-row';
+
+    const valueLabel = document.createElement('label');
+    valueLabel.className = 'slider-value';
+    valueLabel.id = sliderValue.name;
+    valueLabel.innerHTML = sliderValue.value + '$';
+
+    const colorRect = document.createElement('div');
+    colorRect.className = 'slider-color-rect';
+    colorRect.style.backgroundColor = sliderValue.color;
+
+    const textLabel = document.createElement('label');
+    textLabel.className = 'slider-name';
+    textLabel.innerHTML = sliderValue.name;
+
+    sliderValueDiv.appendChild(valueLabel);
+    sliderValueDiv.appendChild(colorRect);
+    sliderValueDiv.appendChild(textLabel);
+
+    componentValuesEl.appendChild(sliderValueDiv);
+  });
+});
+
+component.onChange(sliderValues => {
+  sliderValues.forEach(sliderValue => {
+    const element = document.getElementById(sliderValue.name);
+
+    if(element) {
+      element.innerHTML = sliderValue.value + "$";
+    }
+  })
+  
 });
