@@ -102,7 +102,7 @@ class CircularSliderItem {
 
   get currentLocation() { return this.#currentLocation; }
 
-  constructor(sliderOptions, componentOptions, center) {
+  constructor(canvas, sliderOptions, componentOptions, center) {
     this.#sliderOptions = sliderOptions;
     this.#center = center;
     this.#componentOptions = componentOptions;
@@ -114,7 +114,8 @@ class CircularSliderItem {
       this.#steps.push(Trigonometry.degree2Radian(i));
     }
 
-    this.#setMouseEvents();
+    this.#setMouseEvents(canvas);
+    this.#setTouchEvents(canvas);
   }
 
   drawBaseCircle(ctx) {
@@ -196,8 +197,8 @@ class CircularSliderItem {
     return closestStep;
   }
 
-  #setMouseEvents() {
-    document.addEventListener('click', e => this.#handleMouseEvent(e));
+  #setMouseEvents(canvas) {
+    canvas.addEventListener('click', e => this.#handleMouseEvent(e));
     document.addEventListener('mousedown', e => this.#handleMouseEvent(e) ? this.#sliderHold = true : this.#sliderHold = false);
     document.addEventListener('mouseup', _ => this.#sliderHold = false);
     document.addEventListener('mousemove', e => this.#sliderHold ? this.#handleMouseEvent(e) : undefined);
@@ -207,6 +208,28 @@ class CircularSliderItem {
     if(this.#isInCircle({ x: e.layerX, y: e.layerY }, this.#center, this.#sliderOptions.radius, this.#componentOptions.baseSlider.thickness / 2)) {
       this.#currentLocation.x = e.layerX;
       this.#currentLocation.y = e.layerY;
+      return true;
+    }
+    return false;
+  }
+
+  #setTouchEvents(canvas) {
+    canvas.addEventListener('touchstart', e => this.#sliderHold = this.#handleTouchEvent(e, canvas));
+    canvas.addEventListener('touchend', _ => this.#sliderHold = false);
+    canvas.addEventListener('touchmove', e => this.#sliderHold ? this.#handleTouchEvent(e, canvas) : undefined);
+  }
+
+  #handleTouchEvent(e, canvas) {
+    if(e.touches.length < 1) { return };
+
+    // Calculate canvas offset
+    const canvasRects = canvas.getClientRects()[0];
+    const x = e.touches[0].pageX - canvasRects.left;
+    const y = e.touches[0].pageY - canvasRects.top;
+
+    if(this.#isInCircle({ x, y }, this.#center, this.#sliderOptions.radius, this.#componentOptions.baseSlider.thickness / 2)) {  
+      this.#currentLocation.x = x;
+      this.#currentLocation.y = y;
       return true;
     }
     return false;
@@ -235,7 +258,7 @@ class CircularSlider {
     componentOptions = new ComponentOptions(componentOptions);
 
     this.#validateSliderOptions(sliderOptionsList, componentOptions);
-    this.#setup(sliderOptionsList, componentOptions);
+    this.#setup(canvas, sliderOptionsList, componentOptions);
   }
 
   onChange(changedValues) {
@@ -261,7 +284,7 @@ class CircularSlider {
     }
   }
 
-  #setup(sliderOptionsList, componentOptions) {
+  #setup(canvas, sliderOptionsList, componentOptions) {
     window.addEventListener('load', _ => {
       this.#canvas.width = this.#canvas.clientWidth;
       this.#canvas.height = this.#canvas.clientHeight; 
@@ -271,7 +294,7 @@ class CircularSlider {
       this.#center.y = this.#canvas.height / 2;
 
       sliderOptionsList.forEach(sliderOptions => {
-        this.#sliderItems.push(new CircularSliderItem(sliderOptions, componentOptions, this.#center));
+        this.#sliderItems.push(new CircularSliderItem(canvas, sliderOptions, componentOptions, this.#center));
       })
     
       window.requestAnimationFrame(this.#render.bind(this));
@@ -333,5 +356,8 @@ const component = new CircularSlider('canvas', [
 ]);
 
 component.onChange(values => {
-  console.log(JSON.stringify(values));
+  // console.log(JSON.stringify(values));
 })
+
+let element = document.getElementById('canvas');
+let test = element.getClientRects();
