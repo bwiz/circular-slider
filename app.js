@@ -43,10 +43,12 @@ class ComponentOptions {
   }
 
   #updateOptionIfExists(existingItem, newItem) {
+    if(!newItem) { return; }
+
     if(typeof(existingItem) === 'object' && existingItem !== null) {
-      Object.keys(existingObj).forEach(prop => {
-        if(newObj[prop]) {
-          existingObj[prop] = newObj[prop];
+      Object.keys(existingItem).forEach(prop => {
+        if(newItem.hasOwnProperty(prop)) {
+          existingItem[prop] = newItem[prop];
         }
       });
     } else {
@@ -85,6 +87,32 @@ class CircularSliderOptions {
     this.#maxValue = maxValue;
     this.#radius = radius;
     this.#step = (step * 360) / (maxValue - minValue);
+  }
+
+  validate() {
+    if(!this.name || !this.color || (this.minValue === undefined) || !this.maxValue || !this.step) {
+      throw "Required parameters are not present!";
+    }
+
+    if(this.minValue < 0 || this.maxValue < 0 || this.step < 0 || this.radius < 0) {
+      throw "Negative values are not supported";
+    }
+
+    if(this.minValue >= this.maxValue) {
+      throw "Minimal value cannot be greater than the negative";
+    }
+
+    if(this.step <= 1) {
+      throw "Step value must be greater than 1";
+    }
+  }
+}
+
+class SliderResult {
+  constructor(name, color, value) {
+    this.name = name;
+    this.color = color;
+    this.value = value;
   }
 }
 
@@ -156,11 +184,7 @@ class CircularSliderItem {
     let degrees = Trigonometry.radians2Degrees(this.#getClosestStep(this.#steps, theta));
     const value = (degrees * (this.#sliderOptions.maxValue - this.#sliderOptions.minValue)) / 360 + this.#sliderOptions.minValue;
 
-    return {
-      name: this.#sliderOptions.name,
-      color: this.#sliderOptions.color,
-      value: value.toFixed(0)
-    };
+    return new SliderResult(this.#sliderOptions.name, this.#sliderOptions.color, value.toFixed(this.#componentOptions.decimals));
   }
 
   #isInCircle(currentLocation, center, distance, distanceDelta) {
@@ -191,7 +215,6 @@ class CircularSliderItem {
       }
     });
   
-    console.log(closestStep);
     return closestStep;
   }
 
@@ -282,6 +305,8 @@ class CircularSlider {
   }
 
   #validateSliderOptions(sliderOptions, componentOptions) {
+    sliderOptions.forEach(sliderOption => sliderOption.validate());
+
     // The max circle size is 80% of the max width/height, and the lowest 150
     const max = Math.min(this.#canvas.clientWidth, this.#canvas.clientHeight);
 
@@ -322,7 +347,7 @@ class CircularSlider {
         this.#sliderItems.push(new CircularSliderItem(sliderOptions, componentOptions, this.#center));
       })
 
-      this.#onInit(sliderOptionsList.map(x => ({ name: x.name, color: x.color, value: x.minValue })));
+      this.#onInit(sliderOptionsList.map(x => new SliderResult(x.name, x.color, x.minValue )));
     
       window.requestAnimationFrame(this.#render.bind(this));
     });
@@ -353,8 +378,6 @@ class CircularSlider {
       this.#onChangedValues(sliderValueResults);
       this.#previousValueResults = sliderValueResults;
     }
-
-    // this.#drawValues(this.#ctx, sliderValueResults);
   }
 
   #setEvents(canvas) {
@@ -379,69 +402,4 @@ class CircularSlider {
       this.#render();
     }
   }
-
-  // // TODO: Remove temp method
-  // #drawValues(ctx, sliderValueResults) {
-  //   // Texts
-  //   let offset = 10;
-  //   sliderValueResults.forEach(sliderValueResult => {
-  //     ctx.beginPath();
-  //     ctx.font = '30px Arial';
-  //     ctx.fillStyle = 'black';
-  //     ctx.fillText(`${sliderValueResult.name}:`, 10, offset + 50);
-  //     ctx.font = 'bold 30px Arial Narrow';
-  //     ctx.fillStyle = sliderValueResult.color;
-  //     ctx.fillText(`$${sliderValueResult.value}`, 150, offset + 50);
-
-  //     offset += 50;
-  //   });
-  // }
 }
-
-const component = new CircularSlider('canvas', [
-  new CircularSliderOptions('Health care', '#ff4043', 0, 1000, 10),
-  new CircularSliderOptions('Entertainment', '#ff881f', 0, 1000, 10),
-  new CircularSliderOptions('Insurance', '#00a507', 0, 1000, 10),
-  new CircularSliderOptions('Food', '#0086ca', 0, 1000, 10),
-  new CircularSliderOptions('Transportation', '#6d4380', 0, 1000, 10)
-]);
-
-component.onInit(sliderValue => {
-  const componentValuesEl = document.getElementById('component-values');
-  componentValuesEl.innerHTML = '';
-
-  sliderValue.forEach(sliderValue => {
-    const sliderValueDiv = document.createElement('div');
-    sliderValueDiv.className = 'slider-value-row';
-
-    const valueLabel = document.createElement('label');
-    valueLabel.className = 'slider-value';
-    valueLabel.id = sliderValue.name;
-    valueLabel.innerHTML = sliderValue.value + '$';
-
-    const colorRect = document.createElement('div');
-    colorRect.className = 'slider-color-rect';
-    colorRect.style.backgroundColor = sliderValue.color;
-
-    const textLabel = document.createElement('label');
-    textLabel.className = 'slider-name';
-    textLabel.innerHTML = sliderValue.name;
-
-    sliderValueDiv.appendChild(valueLabel);
-    sliderValueDiv.appendChild(colorRect);
-    sliderValueDiv.appendChild(textLabel);
-
-    componentValuesEl.appendChild(sliderValueDiv);
-  });
-});
-
-component.onChange(sliderValues => {
-  sliderValues.forEach(sliderValue => {
-    const element = document.getElementById(sliderValue.name);
-
-    if(element) {
-      element.innerHTML = sliderValue.value + "$";
-    }
-  })
-  
-});

@@ -8,13 +8,61 @@
   <body>
     <h2>Circular slider</h2>
     <div class="component">
-      <div id="component-values">
-        test
-      </div>
+      <div id="component-values"></div>
       <div id="component-slider">
         <canvas id="canvas"></canvas>
       </div>
     </div>
     <script src="app.js"></script>
+    <script>
+      const component = new CircularSlider('canvas', [
+        new CircularSliderOptions('Health care', '#ff4043', 0, 1000, 10),
+        new CircularSliderOptions('Entertainment', '#ff881f', 0, 1000, 10),
+        new CircularSliderOptions('Insurance', '#00a507', 0, 1000, 10),
+        new CircularSliderOptions('Food', '#0086ca', 0, 1000, 10),
+        new CircularSliderOptions('Transportation', '#6d4380', 0, 1000, 10)
+      ]);
+
+      component.onInit(sliderValue => {
+        const componentValuesEl = document.getElementById('component-values');
+        componentValuesEl.innerHTML = '';
+
+        sliderValue.forEach(sliderValue => {
+          const sliderValueDiv = document.createElement('div');
+          sliderValueDiv.className = 'slider-value-row';
+
+          const valueLabel = document.createElement('label');
+          valueLabel.className = 'slider-value';
+          valueLabel.id = sliderValue.name;
+          valueLabel.innerHTML = sliderValue.value + '$';
+
+          const colorRect = document.createElement('div');
+          colorRect.className = 'slider-color-rect';
+          colorRect.style.backgroundColor = sliderValue.color;
+
+          const textLabel = document.createElement('label');
+          textLabel.className = 'slider-name';
+          textLabel.innerHTML = sliderValue.name;
+
+          sliderValueDiv.appendChild(valueLabel);
+          sliderValueDiv.appendChild(colorRect);
+          sliderValueDiv.appendChild(textLabel);
+
+          componentValuesEl.appendChild(sliderValueDiv);
+        });
+      });
+
+      component.onChange(sliderValues => {
+        sliderValues.forEach(sliderValue => {
+          const element = document.getElementById(sliderValue.name);
+
+          if(element) {
+            element.innerHTML = sliderValue.value + "$";
+          }
+        })
+        
+      });
+
+    </script>
   </body>
 </html>
