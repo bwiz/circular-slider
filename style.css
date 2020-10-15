@@ -15,8 +15,8 @@ h2 {
 }
 
 .component {
-  width: 1000px;
-  height: 600px;
+  width: 1200px;
+  height: 800px;
   display: flex;
   justify-content: flex-start;
   background-image: linear-gradient(#efeff0, #cacbcd);

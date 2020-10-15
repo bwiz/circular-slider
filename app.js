@@ -110,7 +110,7 @@ class CircularSliderItem {
 
     this.#currentLocation = {};
     this.#steps = [];
-    for (let i = 0; i <= 360; i += sliderOptions.step) { 
+    for (let i = 0; Math.round(i) <= 360; i += sliderOptions.step) { 
       this.#steps.push(Trigonometry.degree2Radian(i));
     }
   }
@@ -191,6 +191,7 @@ class CircularSliderItem {
       }
     });
   
+    console.log(closestStep);
     return closestStep;
   }
 
@@ -284,7 +285,7 @@ class CircularSlider {
     // The max circle size is 80% of the max width/height, and the lowest 150
     const max = Math.min(this.#canvas.clientWidth, this.#canvas.clientHeight);
 
-    const maxRadius = (max / 2) * 0.8;
+    const maxRadius = (max / 2) * 0.9;
     const minRadius = 150;
 
     // If one entry exists without the radius, all values will be recalculated
@@ -400,6 +401,9 @@ class CircularSlider {
 const component = new CircularSlider('canvas', [
   new CircularSliderOptions('Health care', '#ff4043', 0, 1000, 10),
   new CircularSliderOptions('Entertainment', '#ff881f', 0, 1000, 10),
+  new CircularSliderOptions('Insurance', '#00a507', 0, 1000, 10),
+  new CircularSliderOptions('Food', '#0086ca', 0, 1000, 10),
+  new CircularSliderOptions('Transportation', '#6d4380', 0, 1000, 10)
 ]);
 
 component.onInit(sliderValue => {
